@@ -18,17 +18,29 @@ async function quickUpdate(id,changes){const current=tasks.find(t=>t.id===id);if
 function confirmAction(title,message,action){$("#confirmTitle").textContent=title;$("#confirmMessage").textContent=message;pendingConfirm=action;$("#confirmDialog").showModal()}
 async function execute(action,id){try{setState("Saving…");await request(action,{id});await load()}catch(e){setState(e.message,true)}}
 function duplicate(id){const t=tasks.find(x=>x.id===id);if(!t)return;openTask({...t,id:"",task:`Copy of ${t.task}`,status:"Not Started",progress:0,update:"",support:"",managerAttention:false})}
-function summary(){const list=visibleTasks();const hidden=$("#hideCompleted").checked;$("#summaryNote").textContent=hidden?"Completed tasks are excluded because Hide completed is selected.":"Completed tasks are included if they match the current filters.";const date=new Intl.DateTimeFormat(undefined,{dateStyle:"long",timeStyle:"short"}).format(new Date());$("#summaryText").value=`Mandate Status Update
-Generated: ${date}
+function summary(){
+  const list=visibleTasks();
+  const hidden=$("#hideCompleted").checked;
+  $("#summaryNote").textContent=hidden
+    ? "Completed tasks are excluded because Hide completed is selected."
+    : "Completed tasks are included if they match the current filters.";
 
-`+(list.map(t=>`• ${t.task}
-  - Owner: ${t.owner}
-  - Status: ${t.status} (${t.progress}/5 – ${PROGRESS_LABELS[t.progress]})
-  - Update: ${t.update||"No update provided."}${t.support?`
-  - Decision / support required: ${t.support}`:""}${t.managerAttention?"
-  - Manager attention required":""}`).join("
+  const date=new Intl.DateTimeFormat(undefined,{dateStyle:"long",timeStyle:"short"}).format(new Date());
+  const taskText=list.map(t=>{
+    const lines=[
+      `• ${t.task}`,
+      `  - Owner: ${t.owner}`,
+      `  - Status: ${t.status} (${t.progress}/5 - ${PROGRESS_LABELS[t.progress]})`,
+      `  - Update: ${t.update||"No update provided."}`
+    ];
+    if(t.support) lines.push(`  - Decision / support required: ${t.support}`);
+    if(t.managerAttention) lines.push("  - Manager attention required");
+    return lines.join("\\n");
+  }).join("\\n\\n");
 
-")||"No tasks in the current view.");$("#summaryDialog").showModal()}
+  $("#summaryText").value=`Mandate Status Update\\nGenerated: ${date}\\n\\n${taskText||"No tasks in the current view."}`;
+  $("#summaryDialog").showModal();
+}
 function setTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem("tracker-theme",theme);$("#themeBtn").textContent=theme==="dark"?"Light mode":"Dark mode"}
 STATUSES.forEach(s=>{$("#taskStatus").add(new Option(s,s));$("#statusFilter").add(new Option(s,s))});PROGRESS_LABELS.forEach((s,i)=>$("#taskProgress").add(new Option(`${i}/5 – ${s}`,i)));
 setTheme(localStorage.getItem("tracker-theme")||"light");$("#themeBtn").onclick=()=>setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark");$("#addBtn").onclick=()=>openTask();$("#refreshBtn").onclick=load;$("#summaryBtn").onclick=summary;$("#archiveViewBtn").onclick=()=>{archiveView=!archiveView;$("#archiveViewBtn").textContent=archiveView?"Back to tasks":"View archive";$("#viewBanner").hidden=!archiveView;$("#addBtn").hidden=archiveView;$("#hideCompleted").closest("label").hidden=archiveView;load()};$("#closeDialog").onclick=$("#cancelBtn").onclick=()=>$("#taskDialog").close();$("#closeSummary").onclick=()=>$("#summaryDialog").close();$("#taskForm").onsubmit=save;$("#confirmCancel").onclick=()=>$("#confirmDialog").close();$("#confirmOk").onclick=async()=>{const fn=pendingConfirm;pendingConfirm=null;$("#confirmDialog").close();if(fn)await fn()};$("#copySummary").onclick=async()=>{await navigator.clipboard.writeText($("#summaryText").value);$("#copySummary").textContent="Copied";setTimeout(()=>$("#copySummary").textContent="Copy to clipboard",1200)};["#searchInput","#statusFilter","#ownerFilter","#hideCompleted"].forEach(s=>$(s).addEventListener("input",render));$("#taskBody").onchange=e=>{const id=e.target.dataset.statusId;if(id)quickUpdate(id,{status:e.target.value})};$("#taskBody").onclick=e=>{const d=e.target.dataset,p=Number(d.progress);if(d.progress!==undefined)return quickUpdate(d.id,{progress:p});if(d.edit)return openTask(tasks.find(t=>t.id===d.edit));if(d.duplicate)return duplicate(d.duplicate);if(d.archive){const t=tasks.find(x=>x.id===d.archive);return confirmAction("Archive task",`Archive “${t.task}”? You can restore it later.`,()=>execute("archive",d.archive))}if(d.restore)return execute("restore",d.restore);if(d.delete){const t=tasks.find(x=>x.id===d.delete);return confirmAction("Delete permanently",`Permanently delete “${t.task}”? This cannot be undone.`,()=>execute("delete",d.delete))}};load();

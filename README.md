@@ -1,30 +1,34 @@
-# Mandate Status Tracker
+# Mandate Status Tracker v2
 
-A compact GitHub Pages front end backed by Google Sheets through Google Apps Script.
+## New functionality
+- Light and dark modes, remembered in the browser
+- Completed tasks remain visible by default
+- Optional **Hide completed** toggle
+- Management summary uses the current visible/filter view
+- Inline status editing
+- Clickable five-bar progress editing
+- Archive, restore, and permanent deletion from the archive
+- Duplicate task
+- Manager-attention flag
+- Decision/support request field
 
-## Set up Google Sheets
-1. Create a Google Sheet and open **Extensions > Apps Script**.
-2. Replace the editor contents with `Code.gs` from this package and save.
-3. Select `setupSheet` in the function dropdown and click **Run** once. Approve permissions.
-4. The `Tasks` tab is created and formatted automatically.
+## Existing tracker upgrade
+1. Back up your Google Sheet.
+2. Replace the old Apps Script with `Code.gs`.
+3. In Apps Script, select and run `upgradeSheetToV2` once.
+4. Approve permissions if requested.
+5. Use **Deploy > Manage deployments > Edit**.
+6. Select **New version**, then deploy it.
+7. Replace the four GitHub Pages files with `index.html`, `styles.css`, `app.js`, and `config.js`.
+8. Preserve your existing `/exec` URL in `config.js`.
 
-## Deploy Apps Script
-1. In Apps Script choose **Deploy > New deployment**.
-2. Type: **Web app**.
-3. Execute as: **Me**.
-4. Who has access: the broadest option your Workspace policy permits. For a GitHub Pages site without Google sign-in logic, anonymous access is required.
-5. Deploy and copy the URL ending in `/exec`.
-6. Paste that URL into `config.js`.
+Do not run `setupSheet` on an existing tracker because it clears the Tasks sheet. Use `upgradeSheetToV2` instead.
 
-When Code.gs changes, use **Deploy > Manage deployments > Edit**, create a new version, and redeploy. Keep the same `/exec` URL.
+## New sheet order
+ID, Task, Owner, Priority, Status, Progress, Latest Update, Manager Attention, Decision / Support Required, Archived, Created At, Updated At
 
-## Publish on GitHub Pages
-1. Create a repository and upload `index.html`, `styles.css`, `app.js`, and `config.js` to the repository root.
-2. Open **Settings > Pages**.
-3. Select **Deploy from a branch**, branch `main`, folder `/ (root)`, then Save.
+## Summary behaviour
+The summary always uses the tasks visible under the current search, status, owner, and Hide completed settings. Completed tasks are included by default. When Hide completed is selected, completed tasks are omitted from both the table and generated summary.
 
-## Sheet columns
-Do not rename or reorder the columns: ID, Task, Owner, Priority, Status, Progress, Latest Update, Created At, Updated At.
-
-## Important access note
-If the Apps Script deployment allows anonymous access, anyone who obtains its URL can read or change task data. Do not store confidential, personal, regulated, or client-sensitive information in this version. For stricter access, use an authenticated backend or host the interface inside Apps Script/Google Workspace.
+## Deletion safety
+Tasks are archived first. Permanent deletion is available only in the archive and requires confirmation.

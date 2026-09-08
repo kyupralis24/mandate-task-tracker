@@ -7,61 +7,81 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="shell">
-    <header class="topbar">
-      <div><h1>Mandate Status Tracker</h1><p>Management overview</p></div>
-      <div class="actions">
-        <button id="addBtn" class="primary">+ Add task</button>
-        <button id="summaryBtn">Generate summary</button>
-        <button id="refreshBtn" title="Reload tasks">Refresh</button>
-      </div>
-    </header>
+<main class="shell">
+  <header class="topbar">
+    <div><h1>Mandate Status Tracker</h1><p>Management overview</p></div>
+    <div class="actions">
+      <button id="themeBtn" title="Switch colour theme">Dark mode</button>
+      <button id="archiveViewBtn">View archive</button>
+      <button id="summaryBtn">Generate summary</button>
+      <button id="addBtn" class="primary">+ Add task</button>
+    </div>
+  </header>
 
-    <section class="kpis" aria-label="Task totals">
-      <div><span id="totalCount">0</span><small>Total</small></div>
-      <div><span id="activeCount">0</span><small>Active</small></div>
-      <div><span id="riskCount">0</span><small>At risk / blocked</small></div>
-      <div><span id="doneCount">0</span><small>Completed</small></div>
-    </section>
+  <section class="kpis" aria-label="Task totals">
+    <div><span id="totalCount">0</span><small>Total</small></div>
+    <div><span id="activeCount">0</span><small>Active</small></div>
+    <div><span id="attentionCount">0</span><small>Needs attention</small></div>
+    <div><span id="doneCount">0</span><small>Completed</small></div>
+  </section>
 
-    <section class="toolbar">
-      <input id="searchInput" type="search" placeholder="Search tasks or updates">
-      <select id="statusFilter"><option value="">All statuses</option></select>
-      <select id="ownerFilter"><option value="">All owners</option></select>
-      <span id="saveState" role="status"></span>
-    </section>
+  <section class="toolbar">
+    <input id="searchInput" type="search" placeholder="Search tasks or updates">
+    <select id="statusFilter"><option value="">All statuses</option></select>
+    <select id="ownerFilter"><option value="">All owners</option></select>
+    <label class="toggle"><input id="hideCompleted" type="checkbox"><span>Hide completed</span></label>
+    <button id="refreshBtn">Refresh</button>
+    <span id="saveState" role="status"></span>
+  </section>
 
-    <section class="sheet-wrap">
-      <table>
-        <thead><tr><th>Task</th><th>Owner</th><th>Priority</th><th>Status</th><th>Progress</th><th>Latest update</th><th></th></tr></thead>
-        <tbody id="taskBody"></tbody>
-      </table>
-      <div id="emptyState" class="empty" hidden>No tasks match this view.</div>
-    </section>
-  </main>
+  <section class="view-banner" id="viewBanner" hidden>
+    <strong>Archive</strong><span>Restore a task or delete it permanently.</span>
+  </section>
 
-  <dialog id="taskDialog">
-    <form id="taskForm" method="dialog">
-      <div class="dialog-head"><h2 id="dialogTitle">Add task</h2><button type="button" class="icon" id="closeDialog">×</button></div>
-      <input type="hidden" id="taskId">
-      <label>Task name<input id="taskName" maxlength="120" required></label>
-      <div class="form-grid">
-        <label>Owner<input id="taskOwner" maxlength="60" required></label>
-        <label>Priority<select id="taskPriority"><option>High</option><option selected>Medium</option><option>Low</option></select></label>
-        <label>Status<select id="taskStatus"></select></label>
-        <label>Progress<select id="taskProgress"></select></label>
-      </div>
-      <label>Latest update<textarea id="taskUpdate" rows="4" maxlength="800" placeholder="What has progressed, what is pending, and any issue requiring attention"></textarea></label>
-      <div class="dialog-actions"><button type="button" id="cancelBtn">Cancel</button><button type="submit" class="primary">Save task</button></div>
-    </form>
-  </dialog>
+  <section class="sheet-wrap">
+    <table>
+      <thead><tr><th>Task</th><th>Owner</th><th>Priority</th><th>Status</th><th>Progress</th><th>Latest update</th><th>Attention</th><th>Actions</th></tr></thead>
+      <tbody id="taskBody"></tbody>
+    </table>
+    <div id="emptyState" class="empty" hidden>No tasks match this view.</div>
+  </section>
+</main>
 
-  <dialog id="summaryDialog">
+<dialog id="taskDialog">
+  <form id="taskForm">
+    <div class="dialog-head"><h2 id="dialogTitle">Add task</h2><button type="button" class="icon" id="closeDialog">×</button></div>
+    <input type="hidden" id="taskId">
+    <label>Task name<input id="taskName" maxlength="120" required></label>
+    <div class="form-grid">
+      <label>Owner<input id="taskOwner" maxlength="60" required></label>
+      <label>Priority<select id="taskPriority"><option>High</option><option selected>Medium</option><option>Low</option></select></label>
+      <label>Status<select id="taskStatus"></select></label>
+      <label>Progress<select id="taskProgress"></select></label>
+    </div>
+    <label>Latest update<textarea id="taskUpdate" rows="3" maxlength="800" placeholder="Progress made, current activity, and next step"></textarea></label>
+    <label>Decision or support required<textarea id="taskSupport" rows="2" maxlength="500" placeholder="Optional: decision, approval, or help needed"></textarea></label>
+    <label class="check"><input id="taskAttention" type="checkbox"> Manager attention required</label>
+    <div class="dialog-actions"><button type="button" id="cancelBtn">Cancel</button><button type="submit" class="primary">Save task</button></div>
+  </form>
+</dialog>
+
+<dialog id="summaryDialog">
+  <div class="dialog-panel">
     <div class="dialog-head"><h2>Management summary</h2><button type="button" class="icon" id="closeSummary">×</button></div>
-    <textarea id="summaryText" rows="18" readonly></textarea>
+    <p id="summaryNote" class="note"></p>
+    <textarea id="summaryText" rows="19" readonly></textarea>
     <div class="dialog-actions"><button id="copySummary" class="primary">Copy to clipboard</button></div>
-  </dialog>
+  </div>
+</dialog>
 
-  <script src="config.js"></script><script src="app.js"></script>
+<dialog id="confirmDialog">
+  <div class="dialog-panel small">
+    <div class="dialog-head"><h2 id="confirmTitle">Confirm action</h2></div>
+    <p id="confirmMessage"></p>
+    <div class="dialog-actions"><button id="confirmCancel">Cancel</button><button id="confirmOk" class="danger">Confirm</button></div>
+  </div>
+</dialog>
+
+<script src="config.js"></script><script src="app.js"></script>
 </body>
 </html>

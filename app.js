@@ -18,7 +18,13 @@ async function quickUpdate(id,changes){const current=tasks.find(t=>t.id===id);if
 function confirmAction(title,message,action){$("#confirmTitle").textContent=title;$("#confirmMessage").textContent=message;pendingConfirm=action;$("#confirmDialog").showModal()}
 async function execute(action,id){try{setState("Saving…");await request(action,{id});await load()}catch(e){setState(e.message,true)}}
 function duplicate(id){const t=tasks.find(x=>x.id===id);if(!t)return;openTask({...t,id:"",task:`Copy of ${t.task}`,status:"Not Started",progress:0,update:"",support:"",managerAttention:false})}
-function summary(){
+function summary() { 2 const list = visibleTasks(); 3 const completedHidden = $("#hideCompleted").checked; 4   5 $("#summaryNote").textContent = completedHidden 6 ? "Completed tasks are excluded because Hide completed is selected." 7 : "The summary includes all tasks currently visible in the tracker."; 8   9 const summaryItems = list.map(task => { 10 const progressLabel = 11 PROGRESS_LABELS[task.progress] || `${task.progress}/5`; 12   13 const rawUpdate = task.update?.trim() || "No update provided."; 14   15 /* 16 * Split multiline updates into clean bullet points. 17 * Existing bullet symbols, tabs, and unnecessary spaces are removed. 18 */ 19 const updateLines = rawUpdate 20 .split(/
+?
+/) 21 .map(line => 22 line 23 .replace(/^[\s•●▪◦*-]+/, "") 24 .replace(/\s+/g, " ") 25 .trim() 26 ) 27 .filter(Boolean); 28   29 const formattedUpdate = updateLines 30 .map(line => ` • ${line}`) 31 .join("
+"); 32   33 const taskLines = [ 34 `• ${task.task}`, 35 ` Status: ${task.status}`, 36 ` Progress: ${task.progress}/5 (${progressLabel})`, 37 ` Update:`, 38 formattedUpdate 39 ]; 40   41 if (task.support?.trim()) { 42 taskLines.push( 43 ` Support required:`, 44 ` • ${task.support.trim()}` 45 ); 46 } 47   48 if (task.managerAttention) { 49 taskLines.push(` Manager attention required`); 50 } 51   52 return taskLines.join("
+"); 53 }); 54   55 $("#summaryText").value = 56 summaryItems.length > 0 57 ? summaryItems.join("
+
+") 58 : "No tasks are available in the current view."; 59   60 $("#summaryDialog").showModal(); 61 }
   const list=visibleTasks();
   const hidden=$("#hideCompleted").checked;
   $("#summaryNote").textContent=hidden

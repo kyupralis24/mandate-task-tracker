@@ -1,0 +1,70 @@
+const STATUSES=["Not Started","In Progress","At Risk","Blocked","Near Completion","Completed"];
+const PROGRESS_LABELS=["Not started","Initiated","Underway","Significant progress","Near completion","Completed"];
+const $=s=>document.querySelector(s); let tasks=[],archiveView=false,pendingConfirm=null; const api=window.APP_CONFIG?.API_URL||"";
+function esc(v=""){return String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]))}
+function setState(t,error=false){$("#saveState").textContent=t;$("#saveState").classList.toggle("error",error)}
+async function request(action,payload={}){if(!api||api.includes("PASTE_YOUR"))throw new Error("Add the Apps Script /exec URL to config.js");const options=action==="list"?{}:{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action,...payload})};const suffix=action==="list"?`?action=list&archived=${archiveView}&t=${Date.now()}`:"";const r=await fetch(api+suffix,options);const data=await r.json();if(!data.ok)throw new Error(data.error||"Request failed");return data}
+async function load(){try{setState("Loading…");tasks=(await request("list")).tasks||[];populateOwners();render();setState("Up to date")}catch(e){setState(e.message,true)}}
+function populateOwners(){const selected=$("#ownerFilter").value,owners=[...new Set(tasks.map(t=>t.owner).filter(Boolean))].sort();$("#ownerFilter").innerHTML='<option value="">All owners</option>'+owners.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("");$("#ownerFilter").value=owners.includes(selected)?selected:""}
+function visibleTasks(){const q=$("#searchInput").value.trim().toLowerCase(),status=$("#statusFilter").value,owner=$("#ownerFilter").value,hideDone=$("#hideCompleted").checked;return tasks.filter(t=>(!q||`${t.task} ${t.update} ${t.support}`.toLowerCase().includes(q))&&(!status||t.status===status)&&(!owner||t.owner===owner)&&(!hideDone||t.status!=="Completed"))}
+function attention(t){return t.managerAttention||["At Risk","Blocked"].includes(t.status)}
+function progressBars(t){return `<div class="bars" aria-label="${t.progress} of 5">${[1,2,3,4,5].map(i=>`<button class="bar ${i<=t.progress?'on':''}" data-id="${esc(t.id)}" data-progress="${i}" title="Set ${i}/5 – ${PROGRESS_LABELS[i]}"></button>`).join("")}<button class="bar ${t.progress===0?'on':''}" data-id="${esc(t.id)}" data-progress="0" title="Reset to 0/5"></button><span class="progress-label">${t.progress}/5</span></div>`}
+function statusOptions(value){return STATUSES.map(s=>`<option ${s===value?'selected':''}>${s}</option>`).join("")}
+function render(){const list=visibleTasks();$("#taskBody").innerHTML=list.map(t=>`<tr><td><strong>${esc(t.task)}</strong>${t.support?`<br><small title="${esc(t.support)}">Support requested</small>`:""}</td><td>${esc(t.owner)}</td><td>${esc(t.priority)}</td><td>${archiveView?esc(t.status):`<select data-status-id="${esc(t.id)}">${statusOptions(t.status)}</select>`}</td><td>${archiveView?`${t.progress}/5`:progressBars(t)}</td><td class="update" title="${esc(t.update)}">${esc(t.update)||"—"}</td><td>${attention(t)?'<span class="attention">Required</span>':'—'}</td><td class="row-actions">${archiveView?`<button data-restore="${esc(t.id)}">Restore</button><button data-delete="${esc(t.id)}" class="danger">Delete</button>`:`<button data-edit="${esc(t.id)}">Edit</button><details class="more"><summary>•••</summary><div class="menu"><button data-duplicate="${esc(t.id)}">Duplicate</button><button data-archive="${esc(t.id)}">Archive</button></div></details>`}</td></tr>`).join("");$("#emptyState").hidden=!!list.length;$("#totalCount").textContent=tasks.length;$("#doneCount").textContent=tasks.filter(t=>t.status==="Completed").length;$("#attentionCount").textContent=tasks.filter(attention).length;$("#activeCount").textContent=tasks.filter(t=>t.status!=="Completed").length}
+function openTask(t={}){$("#dialogTitle").textContent=t.id?"Edit task":"Add task";$("#taskId").value=t.id||"";$("#taskName").value=t.task||"";$("#taskOwner").value=t.owner||"Viom";$("#taskPriority").value=t.priority||"Medium";$("#taskStatus").value=t.status||"Not Started";$("#taskProgress").value=Number(t.progress)||0;$("#taskUpdate").value=t.update||"";$("#taskSupport").value=t.support||"";$("#taskAttention").checked=!!t.managerAttention;$("#taskDialog").showModal();$("#taskName").focus()}
+function formTask(){return{id:$("#taskId").value,task:$("#taskName").value.trim(),owner:$("#taskOwner").value.trim(),priority:$("#taskPriority").value,status:$("#taskStatus").value,progress:Number($("#taskProgress").value),update:$("#taskUpdate").value.trim(),support:$("#taskSupport").value.trim(),managerAttention:$("#taskAttention").checked}}
+async function save(e){e.preventDefault();const item=formTask();if(item.status==="Completed")item.progress=5;if(item.progress===5)item.status="Completed";try{setState("Saving…");await request(item.id?"update":"create",item);$("#taskDialog").close();await load()}catch(e){setState(e.message,true)}}
+async function quickUpdate(id,changes){const current=tasks.find(t=>t.id===id);if(!current)return;const item={...current,...changes};if(changes.status==="Completed")item.progress=5;if(Number(changes.progress)===5)item.status="Completed";try{setState("Saving…");await request("update",item);await load()}catch(e){setState(e.message,true);await load()}}
+function confirmAction(title,message,action){$("#confirmTitle").textContent=title;$("#confirmMessage").textContent=message;pendingConfirm=action;$("#confirmDialog").showModal()}
+async function execute(action,id){try{setState("Saving…");await request(action,{id});await load()}catch(e){setState(e.message,true)}}
+function duplicate(id){const t=tasks.find(x=>x.id===id);if(!t)return;openTask({...t,id:"",task:`Copy of ${t.task}`,status:"Not Started",progress:0,update:"",support:"",managerAttention:false})}
+function summary() {
+  const list = visibleTasks();
+  const completedHidden = $("#hideCompleted").checked;
+
+  $("#summaryNote").textContent = completedHidden
+    ? "Completed tasks are excluded because Hide completed is selected."
+    : "The summary includes all tasks currently visible in the tracker.";
+
+  const summaryItems = list.map(task => {
+    const progressLabel = PROGRESS_LABELS[task.progress] || `${task.progress}/5`;
+    const rawUpdate = task.update?.trim() || "No update provided.";
+
+    const updateLines = rawUpdate
+      .split(/\r?\n/)
+      .map(line => line
+        .replace(/^[\s•●▪◦*-]+/, "")
+        .replace(/\s+/g, " ")
+        .trim()
+      )
+      .filter(Boolean);
+
+    const taskLines = [
+      `• ${task.task}`,
+      `  Status: ${task.status}`,
+      `  Progress: ${task.progress}/5 (${progressLabel})`,
+      "  Update:",
+      ...updateLines.map(line => `    • ${line}`)
+    ];
+
+    if (task.support?.trim()) {
+      const supportLines = task.support.trim().split(/\r?\n/)
+        .map(line => line.replace(/^[\s•●▪◦*-]+/, "").trim())
+        .filter(Boolean);
+      taskLines.push("  Support required:");
+      taskLines.push(...supportLines.map(line => `    • ${line}`));
+    }
+
+    if (task.managerAttention) taskLines.push("  Manager attention required");
+    return taskLines.join("\n");
+  });
+
+  $("#summaryText").value = summaryItems.length
+    ? summaryItems.join("\n\n")
+    : "No tasks are available in the current view.";
+
+  $("#summaryDialog").showModal();
+}
+function setTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem("tracker-theme",theme);$("#themeBtn").textContent=theme==="dark"?"Light mode":"Dark mode"}
+STATUSES.forEach(s=>{$("#taskStatus").add(new Option(s,s));$("#statusFilter").add(new Option(s,s))});PROGRESS_LABELS.forEach((s,i)=>$("#taskProgress").add(new Option(`${i}/5 – ${s}`,i)));
+setTheme(localStorage.getItem("tracker-theme")||"light");$("#themeBtn").onclick=()=>setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark");$("#addBtn").onclick=()=>openTask();$("#refreshBtn").onclick=load;$("#summaryBtn").onclick=summary;$("#archiveViewBtn").onclick=()=>{archiveView=!archiveView;$("#archiveViewBtn").textContent=archiveView?"Back to tasks":"View archive";$("#viewBanner").hidden=!archiveView;$("#addBtn").hidden=archiveView;$("#hideCompleted").closest("label").hidden=archiveView;load()};$("#closeDialog").onclick=$("#cancelBtn").onclick=()=>$("#taskDialog").close();$("#closeSummary").onclick=()=>$("#summaryDialog").close();$("#taskForm").onsubmit=save;$("#confirmCancel").onclick=()=>$("#confirmDialog").close();$("#confirmOk").onclick=async()=>{const fn=pendingConfirm;pendingConfirm=null;$("#confirmDialog").close();if(fn)await fn()};$("#copySummary").onclick=async()=>{await navigator.clipboard.writeText($("#summaryText").value);$("#copySummary").textContent="Copied";setTimeout(()=>$("#copySummary").textContent="Copy to clipboard",1200)};["#searchInput","#statusFilter","#ownerFilter","#hideCompleted"].forEach(s=>$(s).addEventListener("input",render));$("#taskBody").onchange=e=>{const id=e.target.dataset.statusId;if(id)quickUpdate(id,{status:e.target.value})};$("#taskBody").onclick=e=>{const d=e.target.dataset,p=Number(d.progress);if(d.progress!==undefined)return quickUpdate(d.id,{progress:p});if(d.edit)return openTask(tasks.find(t=>t.id===d.edit));if(d.duplicate)return duplicate(d.duplicate);if(d.archive){const t=tasks.find(x=>x.id===d.archive);return confirmAction("Archive task",`Archive “${t.task}”? You can restore it later.`,()=>execute("archive",d.archive))}if(d.restore)return execute("restore",d.restore);if(d.delete){const t=tasks.find(x=>x.id===d.delete);return confirmAction("Delete permanently",`Permanently delete “${t.task}”? This cannot be undone.`,()=>execute("delete",d.delete))}};load();

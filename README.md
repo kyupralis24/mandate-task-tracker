@@ -1,34 +1,38 @@
-# Mandate Status Tracker v2
+# Mandate Status Tracker
 
-## New functionality
-- Light and dark modes, remembered in the browser
-- Completed tasks remain visible by default
-- Optional **Hide completed** toggle
-- Management summary uses the current visible/filter view
-- Inline status editing
-- Clickable five-bar progress editing
-- Archive, restore, and permanent deletion from the archive
-- Duplicate task
-- Manager-attention flag
-- Decision/support request field
+## GitHub Pages files
+Upload these files to the repository root:
 
-## Existing tracker upgrade
-1. Back up your Google Sheet.
-2. Replace the old Apps Script with `Code.gs`.
-3. In Apps Script, select and run `upgradeSheetToV2` once.
-4. Approve permissions if requested.
-5. Use **Deploy > Manage deployments > Edit**.
-6. Select **New version**, then deploy it.
-7. Replace the four GitHub Pages files with `index.html`, `styles.css`, `app.js`, and `config.js`.
-8. Preserve your existing `/exec` URL in `config.js`.
+- `.nojekyll`
+- `index.html`
+- `styles.css`
+- `app.js`
+- `config.js`
 
-Do not run `setupSheet` on an existing tracker because it clears the Tasks sheet. Use `upgradeSheetToV2` instead.
+`config.js` already contains the supplied Google Apps Script `/exec` URL.
 
-## New sheet order
+## Google Apps Script
+
+1. Open the Google Sheet.
+2. Select **Extensions > Apps Script**.
+3. Replace the existing Apps Script with `Code.gs` from this package.
+4. If this is a new empty tracker, run `setupSheet()` once.
+5. If upgrading the original 9-column tracker, run `upgradeSheetToV2()` once instead.
+6. Select **Deploy > Manage deployments > Edit**.
+7. Select **New version**, then click **Deploy**.
+8. The deployment must execute as the sheet owner and allow the access level needed by the GitHub Pages site.
+
+Do not run `setupSheet()` on a populated tracker because it clears and rebuilds the Tasks sheet.
+
+## Required sheet columns
+
 ID, Task, Owner, Priority, Status, Progress, Latest Update, Manager Attention, Decision / Support Required, Archived, Created At, Updated At
 
-## Summary behaviour
-The summary always uses the tasks visible under the current search, status, owner, and Hide completed settings. Completed tasks are included by default. When Hide completed is selected, completed tasks are omitted from both the table and generated summary.
+## GitHub Pages
 
-## Deletion safety
-Tasks are archived first. Permanent deletion is available only in the archive and requires confirmation.
+Enable Pages under **Settings > Pages** using branch `main` and folder `/ (root)`.
+After deployment, hard-refresh the site with `Ctrl + F5`.
+
+## Important URL format
+
+The API URL in `config.js` must be plain text inside quotes. It must not contain an HTML `<a href>` tag, `&quot;`, or other rich-text markup.
